@@ -1,0 +1,436 @@
+---
+title: "Applied Statistics in Zoological Medicine Research"
+output: 
+  learnr::tutorial
+runtime: shiny_prerendered
+---
+
+```{r setup, include=FALSE}
+library(learnr)
+knitr::opts_chunk$set(echo = FALSE)
+library(ZooMedStat)
+
+```
+## Introduction
+
+### Introduction
+Hi Guys,
+Thank you for taking this course. I hope you will find it useful.
+
+The objectives of this course it to teach you how to
+-Perform statistics in a practical way to analyze your own research
+-Focus on applied computing statistics using R without dwelling on underlying statistical theories and demonstrations
+-Focus on statistical techniques and their implementation for common study designs used in zoological medicine
+-Learn how to generate great scientific graph of a publication quality
+
+There are different modules within this course. Feel free to jump directly to the module you want to complete, but be aware that prerequisite knowledge may be needed to understand the materials. This course will take its examples in various real research projects on zoological animal species. While there is a focus in this course on zoological medicine, everything is applicable accross any discipline.
+
+In this course, we won't touch on the theorie of statistics and why it is important, it will purely be a practical R coding and other computational statistical snipets. However, to think as a statistician, there are concepts that I would encourage you to explore such as probabilities, the central limit theorem, Distribution of random variables, sampling distribution of the mean, principles of statistical inference and so on.
+
+The R system is based on objects and packages. By objects I mean that R does not generate extensive outputs, but you need to ask what you want and save it in various object types. By packages, I mean that R comes with certain base functions, but we typically require the use of more specific or more adapted functions that people code and release in the form of R-packages that are all hosted on the Comprehensive R Archive Network (CRAN).
+
+R can be used as a standalone software, but it is far easier to use with RStudio. I'll talk about RStudio in a dedicated lecture as you won't be able to see its functionalities within this tutorial.
+
+### Packages that you should have installed
+If you have not yet downloaded all packages, please exit this tutorial and install the necessary R-packages. Packages should be installed using the command line install.packages("PackageName")
+
+-ZooMedStat: this package is not in CRAN and is the package I made for this course that includes all datasets for the exercises. Download it on courselink.
+
+-learnr: you already got it to be able to run this course
+
+-nmle for linear mixed modelling
+
+-survival for survival analysis
+
+-ordinal for ordinal logistic regression
+
+-ggplot2 for advanced scientific graphing. One of the best graphing tool you will find
+
+-lsmeans for post-hoc multiple comparisons
+
+-referenceIntervals for reference interval determination
+
+-reshape to change data frame format
+
+*Let's launch those libraries for later use*
+```{r launch_libraries, exercise=TRUE}
+library(nlme)
+library(survival)
+library(ordinal)
+library(ggplot2)
+library(emmeans)
+library(referenceIntervals)
+library(reshape2)
+```
+
+### Associated lectures
+I will give a few lectures or instructions on several topics in relation to this tutorial or other important concepts to use R, RStudio, and basic computational statistical tools.
+
+-Introduction to the course and RStudio
+
+-Uploading and setting up datasets
+
+-Typical experimental designs
+
+-The minimum you need to know about statistics to perform statistical analysis
+
+-Other statistical tools
+
+## The R environment {data-progressive=TRUE}
+
+### An advanced calculator
+First, R works like a mathematical calculator, so you can use it as such for a variety of applications. You just need to know the codes, which are fairly intuitive to calculate what you need. For instance square root is sqrt(), exponent is exp(), and *10^20 is 1e20.
+
+*Try to enter some calculus and see what happens (example: 3+4 or sqrt(56))*
+
+```{r calculus,exercise=TRUE }
+
+```
+
+### R objects
+
+R works with objects that can be of various types. They can be list of numbers, list of text strings, matrix, datasets (called dataframes), or output objects.
+Let's start with simple objects. First we'll make a list of numbers, for instance the mean weight of some parrot species. The list is entered using the letter c and then you assign it with an arrow to an object. You can choose whatever name you want for that list.
+In the following codelines, I created a list of weight.
+
+
+*Run the code*
+```{r make_a_list, exercise=TRUE}
+c(450,400,140,200,120,90,35)->weight
+```
+Nothing happens, right!, it is because you entered numbers into a list, but if you want to see it again, you need to call it. Let's try it, go back to the chunk above, and type the name of the list right below the list generation codeline.
+Ok, you can also use calculus with lists and apply functions.
+
+*The "weight" list is in grams, try to transform it in kg, then try to log transform it*
+```{r transform_weight-setup}
+c(450,400,140,200,120,90,35)->weight
+```
+```{r transform_weight, exercise=TRUE}
+
+```
+```{r transform_weight-hint}
+#weight/1000 or weight/1e3
+#log(weight)
+```
+To save your calculation or transformation you will need to save the file into an R-object, you can overwrite weight for instance with "weight/1000->weight"
+
+Alright, you can make lists with strings of text too
+
+*Run the code*
+```{r species_list, exercise=TRUE}
+c("Grey parrot","Amazon parrot","Caique","Lorie","Quaker parrot","Cockatiel","Budgerigar")->parrots
+parrots
+```
+
+You can combine these two lists into a matrix if you want, either combine them by columns or by rows.
+
+*Run the code*
+```{r combine_lists-setup}
+c(450,400,140,200,120,90,35)->weight
+c("Grey parrot","Amazon parrot","Caique","Lorie","Quaker parrot","Cockatiel","Budgerigar")->parrots
+```
+```{r combine_lists, exercise=TRUE}
+cbind(weight,parrots)->data1
+rbind(weight,parrots)->data2
+data1
+data2
+```
+
+
+
+## Data cleaning, organization, and subsetting {data-progressive=TRUE}
+
+In this first part, we'll learn how to evaluate your dataset and look for errors as well as making sure all variables are correctly categorized.
+First I have put example datasets into the package ZooMedStat that has already been loaded in the background.
+
+### Data cleaning and examination
+Let's use the dataset "norepi", let's call it and look at it
+
+*norepi*
+```{r}
+norepi
+```
+
+You can quickly look at it and it seems to be ok. However, go to the last page of this dataset.
+
+```{r quiz1}
+quiz(
+  question("What is wrong with this dataset?",
+    answer("Nothing"),
+    answer("Extra rows that do not match the variables", correct=TRUE),
+    answer("Extra columns that do not match the variables"),
+    answer("Too many missing values"),
+    correct="Damn right! the researcher put extra rows at the end to define acronyms and when it got imported, it messed up the entire dataset"
+  ))
+```
+
+Let's clean it up. If you go on page 8, you'll see that the last legit row is the row 72.
+So we'll take a subset of this and overwrite the parent dataset. To subset a 2*2 data frame, you use these brackets []. The first value is for the rows and the second for the columns. The ":" sign means "to".
+
+*Run the code*
+```{r clean_norepi, exercise=TRUE}
+norepi[1:72,]->norepi
+norepi
+```
+
+When you import datasets into R, make sure there are no extra information that do not belong to the dataset and make sure all cells with missing values are left blank.
+
+If you just want to look at the first few rows, you can do this (you will also see all the variables this way in this exercise)
+```{r clean_norepi_head, exercise=TRUE}
+head(norepi)
+```
+
+You can also extract the different variables (in the form of columns) using the $ sign. For 2*2 data frames, you need to put a comma to indicate the 2 dimensions (rows and columns). Let's look at the heart rate for instance.
+
+*Example*
+```{r norepi_hr-setup}
+norepi[1:72,]->norepi
+```
+```{r norepi_hr, exercise=TRUE}
+norepi$hr
+```
+
+Now, try to look at a factor, call for the factor trt, which represents the different treatments of this experiment.
+```{r norepi_trt, exercise=TRUE, exercise.setup="norepi_hr-setup"}
+
+```
+You can see that it gives you the factor levels at the end also. There is a better way to just get the levels of a factor, just to make sure there are no issues there (extra unintended levels will lead to unwanted comparisons when you run the stats)
+```{r norepi_trt_levels, exercise=TRUE, exercise.setup="norepi_hr-setup"}
+levels(norepi$trt)
+```
+Darn! The software counted some missing values (or maybe extra spaces instead of a truly blank cell on excel) as factor level in itself. This happens commonly. To get rid of it so it does not parasitize your analysis, you need to tell R which levels you want to keep. At this occasion, you can also tell R in which order you want them to be when you graph them.
+```{r norepi_trt_levels_correct, exercise=TRUE, exercise.setup="norepi_hr-setup"}
+factor(norepi$trt,levels=c("awake","baseline","low dose","medium dose","high dose","before recovery"))->norepi$trt
+levels(norepi$trt)
+```
+You can also get the number of instances that each level of a factor was used in an experiment with this code:
+```{r trt_level-setup}
+norepi[1:72,]->norepi
+factor(norepi$trt,levels=c("awake","baseline","low dose","medium dose","high dose","before recovery"))->norepi$trt
+```
+```{r trt_level, exercise=TRUE}
+xtabs(~norepi$trt)
+```
+
+Now, remember that there were some additional rows with text information at the bottom of the dataset that interfered with it. We cleaned it up, but it had the deleterious effect of having R considered one of the variable as a factor when, in fact, it is a numeric variable. 
+```{r}
+norepi[1:72,]->norepi
+```
+```{r include=TRUE}
+class(norepi$weight)
+```
+You cannot get the mean or do any other calculations from a factor, so you need to either correct the excel sheet and reimport it into R or tell R to consider this variable as a number.
+First let's try this:
+```{r trt_number, exercise=TRUE, exercise.setup="trt_level-setup"}
+as.numeric(norepi$weight)
+```
+Mmmh, what the heck just happened?
+Actually, R just gives a number to each level of the factor. You need to convert it to text first, then to a number.
+```{r trt_number2, exercise=TRUE, exercise.setup="trt_level-setup"}
+as.numeric(as.character(norepi$weight))->norepi$weight
+norepi$weight
+```
+
+The opposite may also occur for some factors that use numbers as labels and should not be considered as a number by R. This can later create some issues when modelling data.
+In our case, the first variable, the ID variable, gives number to animals, but these numbers are not really more meaningful than having animals' names. Let's conver that as a factor.
+```{r id_factor, exercise=TRUE}
+as.factor(norepi$id)->norepi$id
+levels(norepi$id)
+```
+
+There are some missing data points in this dataset. That means that, by default, R will remove the entire row of information when encountering these. So you may want to have guick overview of the problem.
+```{r missing, exercise=TRUE, exercise.setup="trt_level-setup"}
+sum(is.na(norepi$sap)) # get the number of missing values for one variable
+summary(norepi) # get the number of missing values for all, last row of the table
+```
+
+Last, if you want to manually edit a dataset, then you can do that:
+*Note/ there will be a pop up window, do your edit and close it*
+```{r editing_manually, exercise=TRUE, exercise.setup="trt_level-setup"}
+edit(norepi)->norepi
+norepi
+```
+
+
+### Data re-organization and subsetting
+
+#### Select rows and columns
+
+Now, you may want to work with only part of this dataset.
+We have already reviewed the code to select only a subset based on rows and coluns. Let see if you remember.
+
+*Select the first 3 columns. Then try to select only the row 3 to 5.*
+```{r subsetting1, exercise=TRUE, exercise.setup="trt_number2"}
+
+```
+```{r subsetting1-hint}
+norepi[1:3,] #for the first one, try to do the second one on your own.
+```
+
+Let's try something harder, just extract the rows 1, 5, 7 and 15. (click on the hint for help if you are stuck)
+```{r subsetting2, exercise=TRUE, exercise.setup="trt_number2"}
+
+```
+```{r subsetting2-hint}
+norepi[c(1,5,7,15),]
+```
+
+
+#### Filter by a variable
+
+You can also subset based on a value of a variable whether it is a factor or a numeric variable. This is handy when you want to subset with values that are spread out in the dataset.
+*Example: Subsetting the data frame for the low dose treatment*
+```{r subsetting3, exercise=TRUE, exercise.setup="trt_number2"}
+norepi[norepi$trt=="low dose",]
+```
+
+#### Reorganize by a variable
+Let say now that you want to reorganize your dataset so it is organized by treatment, you may need that for practical reasons.
+```{r reorganize1, exercise=TRUE, exercise.setup="trt_number2"}
+norepi[order(norepi$trt),]->norepi
+norepi
+```
+
+#### Wide or long data set
+Now, there are 2 ways to organize a whole dataset, with the long or wide format. The "norepi" dataset is already organized in the long format, which is the most useful for statistical analysis using R. That means that there is only one variable per column and for variable that don't vary, the values get repeated. You can see this organization there:
+```{r}
+norepi
+```
+
+The wide format is when the categorical data are grouped in columns instead of being values in a single column. The result is that instead of having one variable per column, you have a variable that spans several columns.
+*Long to wide format for the heart rate*
+```{r wide, exercise=TRUE, exercise.setup="trt_number2"}
+dcast(norepi[,c(1,4,6)],id~trt,value.var="hr")
+```
+*Note/the Var.2 thingy is for the missing data, you can remove it later by subsetting*
+You may not immediately see the point. But some statistical tests and some graphs may require your data to be in this format. Let say you want to do easy barplots and have one variable per bar, then wide format would be easier.
+
+If your data is in the wide format (you imported it this way from an excel file and it would take a lot of time to convert it to long manually), you will probably have to convert it into a long format for statistical analysis.
+```{r long-setup}
+norepi[1:72,]->norepi
+dcast(norepi[,c(1,4,6)],id~trt,value.var="hr")->norepi.wide
+```
+```{r long, exercise=TRUE}
+melt(norepi.wide,idvar=c("id"))
+```
+
+## Descriptive statistics and Data exploration {data-progressive=TRUE}
+We'll use the dataset OwlCBC.
+```{r}
+OwlCBC
+```
+
+### Basic numbers and data distribution
+Descriptive statistics mean that you want to provide summaries for your data. To summarize data, you typically need 2 piece of information: a measure of central tendency and a measure of spread. You should not report one without the other. 
+There are essentially two types of measures of central tendency, the mean (like an average) and the median (the value below and above which 50% of the data are). 
+There are also two main types of measures of spread that are commonly used, the standard deviation and the interquartile range (the value representing the width between the 25% and 75% quantiles)
+
+They are fairly easy to get with R.
+*Calculating the mean and median for pcv of owls*
+```{r descriptive, exercise=TRUE}
+mean(OwlCBC$pcv,na.rm=T) #the code "na.rm=T" tells R to run the command despite missing data
+median(OwlCBC$pcv,na.rm=T)
+sd(OwlCBC$pcv,na.rm=T)
+IQR(OwlCBC$pcv,na.rm=T)
+```
+
+To be able to use the mean and sd, you need to have your data follow a normal distribution (bell curve). If that is not the case, then the mean will not be a good measure of central tendency, so you need to use the median and the sd will not be a good measure of spread, so you need to use the IQR. For normally-distributed data, the mean=median. The median is never wrong to use as it will always be true.
+
+To check for normal distribution, you can first look at the distribution of your data:
+```{r freq, exercise=TRUE}
+hist(OwlCBC$pcv,nclass=30)
+```
+```{r quiz2}
+quiz(
+  question("Does it seem to have a bell-curve?",
+    answer("Yes",correct=TRUE),
+    answer("No"),
+    correct="Awesome, yes it looks roughly like a bell curve"
+  ))
+```
+
+You can also use formal tests such as the Shapiro-Wilk test, but there are many others. The test tests for departure of the normal distribution, so if its p-value is below 0.05, then the departure from normal distribution is significant and your data should not be considered normal.
+*Let's give it a try*
+```{r shapiro, exercise=TRUE}
+shapiro.test(OwlCBC$pcv)
+```
+So it does not seem to be normally distributed after all, but it almost was. 
+
+Formal normality tests are not very powerful and do not perform well with low sample sizes. In our case, we should be confident since we have 276 observations.
+
+Another way to check for normality is to do a normal quantile plot. It plots your data against the normal distribution. If it is a straight line, then it is normally distributed.
+```{r quantile_plot, exercise=TRUE}
+qqnorm(OwlCBC$pcv)
+qqline(OwlCBC$pcv)
+```
+
+So it is not completely on that line, so likely not completely normally distributed, but close.
+
+#### EXERCISE
+Now, get me the best measure of central tendency and spread for the variable wbcL (white blood cell counts determined with leukopette).
+*Note/ if you want to run only one line instead of the whole thing, just put the cursor on that line, then press Alt+Enter in PC and Command+Enter in mac.*
+```{r exercise1, exercise=TRUE}
+
+```
+```{r quiz3}
+quiz(
+  question("Was it normally distributed",
+    answer("Yes"),
+    answer("No",correct=TRUE)),
+  question("Which summary statistics did you use?",
+    answer("mean and standard deviation"),
+    answer("median and interquartile range",correct=TRUE)
+           )
+  )
+```
+
+### Group Descriptions
+Now, you may want to get summary statistics for your whole table to go quicker.
+You just need to ask for a summary:
+```{r summary, exercise=TRUE}
+summary(OwlCBC)
+```
+Unfortunately, you don't get the standard deviation with that.
+To get the standard deviation for all columns, you can do this:
+```{r summary2,exercise=TRUE}
+sapply(OwlCBC[,-1],sd,na.rm=T) #we removed the first column as it is a factor
+```
+
+Your turn! Get me the interquartile range for all variables of that table.
+```{r summary3,exercise=TRUE}
+
+```
+
+
+
+### Data transformations
+
+### Other summary statistics
+
+### Descriptive graphs
+
+## Refererence Intervals
+
+## Basic Epidemiologic Analysis
+
+## Setting up an experiment
+
+## One-sample and Two-sample tests
+
+## Factorial Analysis
+
+## Linear Modelling
+
+## Linear Mixed Modelling
+
+## Categorical Data Analysis and Logistic Regression
+
+## Survival Analysis
+
+## Method Comparison and Agreement Analysis
+
+## Advanced Scientific Graphing
+
+
+
+
